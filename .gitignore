@@ -1,5 +1,4 @@
-# Personlige rekker skal ikke på GitHub
-*.fak
+# Rekker som lastes som standard ligger i repoet (*.fak). rekker_rette.html har rekkene innebygd og bygges lokalt.
 rekker_rette.html
 __pycache__/
 .DS_Store

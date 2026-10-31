@@ -6,11 +6,13 @@ Sorterer rekkene dine fra Radsoft etter antall rette på tippekupongen, med live
 
 ## Bruk
 
-1. Eksporter rekkene fra Radsoft som `.fak`-fil.
-2. Åpne siden og last opp fila (eller dra den inn i vinduet).
-3. Live-resultater hentes hvert minutt. Du kan også sette resultater selv med H/U/B-knappene.
+Siden viser den nyeste `.fak`-fila i repoet (nyeste tidsstempel i filnavnet, f.eks. `LFulltid_202610311328.fak`).
+Ny kupong: eksporter fra Radsoft, legg fila i repoet og push.
 
-Fila leses bare i nettleseren og lagres i nettleserens lokale lagring. Ingenting sendes til noen server.
+Du kan også laste opp en annen fil i nettleseren («Last opp ny .fak-fil» eller dra den inn). Den brukes i den
+nettleseren til repoet får en ny `.fak`-fil, eller til du trykker «bruk … fra repoet».
+
+Live-resultater hentes hvert minutt. Du kan også sette resultater selv med H/U/B-knappene.
 
 ## Datakilde
 

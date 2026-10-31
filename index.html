@@ -78,6 +78,7 @@
   .drop.over{outline:2px dashed var(--accent);outline-offset:4px}
   .drop p{margin:0 0 16px}
   .err{color:var(--bad);font-weight:600}
+  .sub a{color:var(--accent)}
   .empty{color:var(--muted);padding:20px;text-align:center}
 </style>
 </head>
@@ -183,6 +184,7 @@ function handleFiles(files) {
   f.arrayBuffer().then(buf => {
     try {
       const data = parseFak(decodeFak(buf), f.name);
+      data.repoAtUpload = window.__repoName || null; // opplastingen gjelder til repoet får en ny fil
       try { localStorage.setItem(FAK_KEY, JSON.stringify(data)); } catch (e) {}
       if (window.__started) location.reload(); else start(data);
     } catch (e) {
@@ -198,13 +200,54 @@ const dropEl = document.getElementById("drop");
 ["dragleave", "drop"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.remove("over"); }));
 document.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
 
-(function boot() {
+// ---------- Standardfil fra repoet ----------
+// På GitHub Pages finner siden nyeste .fak-fil i repoet via GitHub-API-et og laster den fra Pages.
+// En fil du laster opp selv brukes til repoet får en ny .fak-fil (eller hvis den er nyere enn repoets).
+const stamp = name => { const m = /(\d{12})/.exec(name || ""); return m ? m[1] : ""; };
+
+async function repoFak() {
+  const host = location.hostname.match(/^([^.]+)\.github\.io$/);
+  if (!host) return null;
+  const repo = location.pathname.split("/").filter(Boolean)[0] || `${host[1]}.github.io`;
+  const r = await fetch(`https://api.github.com/repos/${host[1]}/${repo}/contents/`);
+  if (!r.ok) throw new Error("GitHub svarte " + r.status);
+  const files = (await r.json()).filter(f => f.type === "file" && /\.fak$/i.test(f.name));
+  if (!files.length) return null;
+  files.sort((a, b) => (stamp(b.name) + b.name).localeCompare(stamp(a.name) + a.name));
+  return files[0].name;
+}
+
+async function loadRepoFak(name) {
+  const r = await fetch(encodeURIComponent(name), { cache: "no-cache" });
+  if (!r.ok) throw new Error(`Fikk ikke hentet ${name} (${r.status})`);
+  const data = parseFak(decodeFak(await r.arrayBuffer()), name);
+  data.fromRepo = true;
+  return data;
+}
+
+function useRepoFile() {
+  try { localStorage.removeItem(FAK_KEY); } catch (e) {}
+  location.reload();
+}
+
+(async function boot() {
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(FAK_KEY)); } catch (e) {}
-  if (saved && saved.rows) start(saved); else dropEl.hidden = false;
+  let repoName = null;
+  try { repoName = await repoFak(); } catch (e) { console.warn(e); }
+  window.__repoName = repoName;
+  const savedWins = saved && saved.rows &&
+    (!repoName || saved.repoAtUpload === repoName || stamp(saved.file) > stamp(repoName));
+  if (savedWins) return start(saved, repoName);
+  if (repoName) {
+    try { return start(await loadRepoFak(repoName), repoName); }
+    catch (e) { document.getElementById("err").textContent = e.message; }
+  }
+  if (saved && saved.rows) return start(saved, null);
+  dropEl.hidden = false;
 })();
 
-function start(DATA) {
+function start(DATA, repoName) {
 window.__started = true;
 document.getElementById("drop").hidden = true;
 document.getElementById("app").hidden = false;
@@ -223,8 +266,12 @@ let res = Array(12).fill(null);
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (Array.isArray(s) && s.length===12) res = s; } catch(e) {}
 let limit = 200, minC = -1;
 
-document.getElementById("sub").textContent =
-  `${N.toLocaleString("nb-NO")} rekker fra ${DATA.file}` + (DATA.kupong ? ` · Kupong: ${DATA.kupong}` : "");
+document.getElementById("sub").innerHTML =
+  `${N.toLocaleString("nb-NO")} rekker fra ${esc(DATA.file)}` +
+  (DATA.fromRepo ? " (fra repoet)" : repoName ? ` (lastet opp) · <a href="#" id="useRepo">bruk ${esc(repoName)} fra repoet</a>` : "") +
+  (DATA.kupong ? ` · Kupong: ${esc(DATA.kupong)}` : "");
+const ur = document.getElementById("useRepo");
+if (ur) ur.onclick = e => { e.preventDefault(); useRepoFile(); };
 
 // Kamptabell
 const mt = document.getElementById("matches");
