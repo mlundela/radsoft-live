@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radsoft live – rekker sortert etter antall rette</title>
+<style>
+  :root{
+    --bg:#f6f5f1; --card:#fff; --ink:#1d1f24; --muted:#6b6f78; --line:#e3e1da;
+    --ok:#1f8a4c; --ok-bg:#dff3e6; --bad:#c23b32; --bad-bg:#fbe3e1; --pend:#eeede8;
+    --accent:#0b5cad; --accent-bg:#e5effa;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#15171b; --card:#1e2127; --ink:#ececec; --muted:#9aa0aa; --line:#30343c;
+      --ok:#4cc27e; --ok-bg:#183a27; --bad:#ef6b62; --bad-bg:#46201d; --pend:#2a2e35;
+      --accent:#6aa9ec; --accent-bg:#1c2d42; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:22px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px;font-weight:600}
+  table{border-collapse:collapse;width:100%}
+  .matches td{padding:5px 4px;border-top:1px solid var(--line);vertical-align:middle}
+  .matches tr:first-child td{border-top:0}
+  .nr{color:var(--muted);width:22px;text-align:right;font-variant-numeric:tabular-nums}
+  .teams{font-weight:500}
+  .teams small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+  .btns{white-space:nowrap;text-align:right}
+  .btns button{width:46px;height:40px;margin-left:3px;border:1px solid var(--line);background:var(--card);color:var(--ink);
+    border-radius:8px;cursor:pointer;font:600 15px/1 inherit;font-family:inherit;padding:0}
+  .btns button small{display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:2px}
+  .btns button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btns button.on small{color:#fff;opacity:.85}
+  .btns button.zero{opacity:.45}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+  .tools input{flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:14px ui-monospace,Menlo,monospace;letter-spacing:.08em}
+  .tools button,.more button,.filter select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer;font:14px inherit;font-family:inherit}
+  .hint{color:var(--muted);font-size:12px;margin-top:6px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .stat{background:var(--pend);border-radius:10px;padding:10px}
+  .stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+  .stat span{font-size:12px;color:var(--muted)}
+  .dist td{padding:4px 6px;font-variant-numeric:tabular-nums;border-top:1px solid var(--line)}
+  .dist th{font-size:12px;color:var(--muted);font-weight:500;text-align:left;padding:4px 6px}
+  .dist .n{text-align:right}
+  .bar{height:8px;background:var(--accent);border-radius:4px;min-width:1px}
+  .dist tr.hl td{font-weight:600}
+  .rows{margin-top:16px}
+  .rowhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .filter{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+  .rt{width:100%}
+  .rt th{font-size:11px;color:var(--muted);font-weight:500;padding:2px 0;text-align:center}
+  .rt td{padding:2px 1px;text-align:center}
+  .rt td.idx{color:var(--muted);font-size:12px;text-align:right;padding-right:8px;font-variant-numeric:tabular-nums;width:48px}
+  .rt td.sc{font-weight:700;font-variant-numeric:tabular-nums;width:46px;font-size:16px}
+  .rt td.mx{color:var(--muted);font-size:12px;width:56px;font-variant-numeric:tabular-nums}
+  .s{display:inline-block;width:100%;max-width:34px;height:26px;line-height:26px;border-radius:6px;background:var(--pend);font:600 13px ui-monospace,Menlo,monospace}
+  .s.ok{background:var(--ok-bg);color:var(--ok)}
+  .s.bad{background:var(--bad-bg);color:var(--bad);opacity:.75}
+  .more{text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center}
+  .livebar{display:flex;align-items:center;gap:10px;margin:-2px 0 10px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+  .livebar label{display:flex;align-items:center;gap:6px;color:var(--ink);font-weight:600;cursor:pointer}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+  .dot.on{background:#e0322b;animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .score{font-weight:600;color:var(--ink)}
+  .score.live{color:#c2410c}
+  .btns button.on.prov{background:#c2410c;border-color:#c2410c}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .upbtn{display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;font-size:14px;white-space:nowrap}
+  .upbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;padding:10px 16px}
+  .drop{max-width:560px;margin:30px auto;text-align:center;padding:30px 20px}
+  .drop.over{outline:2px dashed var(--accent);outline-offset:4px}
+  .drop p{margin:0 0 16px}
+  .err{color:var(--bad);font-weight:600}
+  .empty{color:var(--muted);padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Rekker sortert etter antall rette</h1>
+      <div class="sub" id="sub"></div>
+    </div>
+    <label class="upbtn" id="newFileBtn" hidden>Last opp ny .fak-fil<input type="file" accept=".fak,.txt" hidden></label>
+  </div>
+
+  <div class="card drop" id="drop" hidden>
+    <h2>Last opp rekker</h2>
+    <p>Eksporter rekkene fra Radsoft som <b>.fak</b>-fil og slipp den her, eller velg fila.</p>
+    <label class="upbtn primary">Velg .fak-fil<input type="file" accept=".fak,.txt" hidden></label>
+    <p class="hint">Fila leses bare i nettleseren din og lagres der til neste gang. Ingenting sendes til noen server. Resultatene hentes fra Norsk Tipping.</p>
+    <p class="err" id="err"></p>
+  </div>
+
+  <div id="app" hidden>
+  <div class="grid">
+    <div class="card">
+      <h2>Resultater</h2>
+      <div class="livebar" id="livebar"></div>
+      <table class="matches" id="matches"></table>
+      <div class="tools">
+        <input id="resText" placeholder="f.eks. HUB-H--..." maxlength="24" aria-label="Resultatrekke">
+        <button id="clear">Nullstill</button>
+      </div>
+      <div class="hint">Trykk H/U/B for hver kamp (trykk igjen for å fjerne). Du kan også skrive hele resultatrekka: H/U/B eller 1/X/2, og «-» for kamper som ikke er ferdige. Tallet under hver knapp er andel av rekkene dine med det tegnet.</div>
+    </div>
+
+    <div class="card">
+      <h2>Status</h2>
+      <div class="stats">
+        <div class="stat"><b id="stBest">–</b><span>beste rad nå</span></div>
+        <div class="stat"><b id="stDone">0/12</b><span>kamper avgjort</span></div>
+        <div class="stat"><b id="stAlive12">–</b><span>rader som kan få 12</span></div>
+      </div>
+      <table class="dist" id="dist"></table>
+    </div>
+  </div>
+
+  <div class="card rows">
+    <div class="rowhead">
+      <h2 style="margin:0">Rekker</h2>
+      <div class="filter">
+        <label for="minC">Vis</label>
+        <select id="minC"></select>
+      </div>
+    </div>
+    <div id="rowsWrap"></div>
+    <div class="more" id="more"></div>
+  </div>
+  </div>
+</div>
+
+<script>
+// ---------- Les Radsoft .fak-fil ----------
+function decodeFak(buf) {
+  // Fila er Latin-1/Windows-1252, men enkelte lagnavn ligger som UTF-8-bytes (f.eks. «MÃ¼nchen»)
+  const text = new TextDecoder("windows-1252").decode(buf);
+  const utf8 = new TextDecoder("utf-8", { fatal: true });
+  return text.split(/\r?\n/).map(line => {
+    if (!/[\u00c0-\u00ff]/.test(line)) return line;
+    const bytes = Uint8Array.from(line, c => c.charCodeAt(0));
+    if (bytes.some((b, i) => line.charCodeAt(i) > 255)) return line;
+    try { return utf8.decode(bytes); } catch (e) { return line; }
+  });
+}
+
+function parseFak(lines, fileName) {
+  const section = name => {
+    const i = lines.findIndex(l => l.trim() === "#" + name);
+    if (i < 0) throw new Error(`Fant ikke «#${name}» i fila. Er det en Radsoft .fak-eksport?`);
+    let j = i + 1;
+    while (j < lines.length && !lines[j].startsWith("#")) j++;
+    return lines.slice(i + 1, j);
+  };
+  const opp = section("oppsett");
+  if (opp.length < 36 + 96) throw new Error("#oppsett-delen er kortere enn forventet.");
+  const names = opp.slice(12, 36).map(x => x.trim());
+  const nums = opp.slice(36);
+  const folk = Array.from({ length: 12 }, (_, i) => [0, 1, 2].map(k => parseInt(nums[k * 12 + i], 10) || 0));
+  const times = opp.slice(36 + 84, 36 + 96).map(x => x.trim());
+  const kupong = opp.find(l => /^(Lørdag|Søndag|Mandag|Tirsdag|Onsdag|Torsdag|Fredag|Midtuke)/.test(l)) || "";
+  const rows = section("rader").map(r => r.trim()).filter(Boolean);
+  if (!rows.length) throw new Error("Fant ingen rekker under #rader.");
+  const bad = rows.find(r => !/^[123]{12}$/.test(r));
+  if (bad) throw new Error(`Uventet radformat: «${bad}». Forventer 12 tegn med 1/2/3.`);
+  return {
+    kupong, file: fileName,
+    matches: Array.from({ length: 12 }, (_, i) => ({ h: names[i], b: names[12 + i], t: times[i], folk: folk[i] })),
+    rows: rows.join(""),
+  };
+}
+
+const FAK_KEY = "radsoft-live-fak";
+function handleFiles(files) {
+  const f = files && files[0]; if (!f) return;
+  f.arrayBuffer().then(buf => {
+    try {
+      const data = parseFak(decodeFak(buf), f.name);
+      try { localStorage.setItem(FAK_KEY, JSON.stringify(data)); } catch (e) {}
+      if (window.__started) location.reload(); else start(data);
+    } catch (e) {
+      document.getElementById("drop").hidden = false;
+      document.getElementById("app").hidden = true;
+      document.getElementById("err").textContent = e.message;
+    }
+  });
+}
+document.querySelectorAll('input[type=file]').forEach(inp => inp.addEventListener("change", e => handleFiles(e.target.files)));
+const dropEl = document.getElementById("drop");
+["dragenter", "dragover"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.remove("over"); }));
+document.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
+
+(function boot() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(FAK_KEY)); } catch (e) {}
+  if (saved && saved.rows) start(saved); else dropEl.hidden = false;
+})();
+
+function start(DATA) {
+window.__started = true;
+document.getElementById("drop").hidden = true;
+document.getElementById("app").hidden = false;
+document.getElementById("newFileBtn").hidden = false;
+const SIGNS = ["H","U","B"];
+const M = DATA.matches;
+const N = DATA.rows.length / 12;
+const rows = new Uint8Array(DATA.rows.length);
+for (let i = 0; i < DATA.rows.length; i++) rows[i] = DATA.rows.charCodeAt(i) - 49; // '1'->0 (H), '2'->1 (U), '3'->2 (B)
+
+// andel av rekkene med hvert tegn per kamp
+const cover = M.map((_, k) => { const c=[0,0,0]; for (let r=0;r<N;r++) c[rows[r*12+k]]++; return c; });
+
+const STORE_KEY = "radsoft-res-" + DATA.file;
+let res = Array(12).fill(null);
+try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (Array.isArray(s) && s.length===12) res = s; } catch(e) {}
+let limit = 200, minC = -1;
+
+document.getElementById("sub").textContent =
+  `${N.toLocaleString("nb-NO")} rekker fra ${DATA.file}` + (DATA.kupong ? ` · Kupong: ${DATA.kupong}` : "");
+
+// Kamptabell
+const mt = document.getElementById("matches");
+M.forEach((m, k) => {
+  const tr = document.createElement("tr");
+  const pct = cover[k].map(c => Math.round(100*c/N));
+  tr.innerHTML = `<td class="nr">${k+1}</td>
+    <td class="teams">${esc(m.h)} – ${esc(m.b)}<small><span class="score" id="sc${k}"></span><span id="tm${k}">${esc(m.t)}</span> · Folk ${m.folk.join(" / ")}</small></td>
+    <td class="btns">${SIGNS.map((s,i)=>`<button data-k="${k}" data-v="${i}" class="${pct[i]===0?'zero':''}" title="Andel av dine rekker med ${s}">${s}<small>${pct[i]}%</small></button>`).join("")}</td>`;
+  mt.appendChild(tr);
+});
+mt.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const k = +b.dataset.k, v = +b.dataset.v;
+  if (live.on) setLive(false, "Live slått av fordi du endret et resultat manuelt.");
+  res[k] = res[k] === v ? null : v;
+  update(true);
+});
+
+const resText = document.getElementById("resText");
+resText.addEventListener("input", () => {
+  if (live.on) setLive(false, "Live slått av fordi du endret resultatrekka manuelt.");
+  const t = resText.value.toUpperCase().replace(/\s+/g,"");
+  const map = {"H":0,"1":0,"U":1,"X":1,"B":2,"2":2};
+  res = Array.from({length:12}, (_,i) => (i < t.length && t[i] in map) ? map[t[i]] : null);
+  update(false);
+});
+document.getElementById("clear").onclick = () => { res = Array(12).fill(null); update(true); };
+document.getElementById("minC").onchange = e => { minC = +e.target.value; limit = 200; render(); };
+
+let scored = [];
+function update(syncText) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(res)); } catch(e) {}
+  if (syncText) resText.value = res.map(v => v===null ? "-" : SIGNS[v]).join("").replace(/-+$/,"");
+  mt.querySelectorAll("button").forEach(b => {
+    const k = +b.dataset.k, on = res[k] === +b.dataset.v;
+    b.classList.toggle("on", on);
+    b.classList.toggle("prov", on && live.on && !!live.info[k] && !live.info[k].final);
+  });
+
+  const done = res.filter(v => v !== null).length;
+  scored = new Array(N);
+  // «Maks» regner bare ferdigspilte kamper som avgjort; live-stillinger kan fortsatt endre seg
+  const settled = res.map((v, k) => v !== null && !(live.on && live.info[k] && !live.info[k].final));
+  for (let r = 0; r < N; r++) {
+    let c = 0, w = 0;
+    for (let k = 0; k < 12; k++) { const v = res[k]; if (v === null) continue; if (rows[r*12+k] === v) c++; else if (settled[k]) w++; }
+    scored[r] = { r, c, max: 12 - w };
+  }
+  scored.sort((a,b) => b.c - a.c || b.max - a.max || a.r - b.r);
+
+  document.getElementById("stDone").textContent = `${done}/12`;
+  document.getElementById("stBest").textContent = done ? `${scored[0].c} rette` : "–";
+  document.getElementById("stAlive12").textContent = scored.filter(s => s.max === 12).length.toLocaleString("nb-NO");
+
+  // Fordeling
+  const byC = Array(13).fill(0), byMax = Array(13).fill(0);
+  scored.forEach(s => { byC[s.c]++; byMax[s.max]++; });
+  const cumMax = Array(13).fill(0); for (let i = 12; i >= 0; i--) cumMax[i] = byMax[i] + (i<12 ? cumMax[i+1] : 0);
+  const top = Math.max(...byC);
+  let h = `<tr><th>Rette nå</th><th class="n">Rader</th><th style="width:40%"></th><th class="n" title="Rader som fortsatt kan nå minst dette antallet (bare ferdigspilte kamper regnes som avgjort)">Kan nå</th></tr>`;
+  for (let c = 12; c >= 0; c--) {
+    if (c < 6 && byC[c] === 0 && c < Math.min(...scored.map(s=>s.c))) continue;
+    h += `<tr class="${c>=10 && byC[c] ? 'hl':''}"><td>${c} rette</td><td class="n">${byC[c].toLocaleString("nb-NO")}</td>
+      <td><div class="bar" style="width:${top ? 100*byC[c]/top : 0}%"></div></td><td class="n">${cumMax[c].toLocaleString("nb-NO")}</td></tr>`;
+  }
+  document.getElementById("dist").innerHTML = h;
+
+  // Filtervalg
+  const sel = document.getElementById("minC");
+  const opts = [`<option value="-1">alle rekker</option>`];
+  for (let c = 12; c >= 1; c--) { const n = scored.filter(s => s.c >= c).length; if (n) opts.push(`<option value="${c}">minst ${c} rette (${n.toLocaleString("nb-NO")})</option>`); }
+  sel.innerHTML = opts.join("");
+  if (![...sel.options].some(o => +o.value === minC)) minC = -1;
+  sel.value = String(minC);
+
+  render();
+}
+
+function render() {
+  const list = minC < 0 ? scored : scored.filter(s => s.c >= minC);
+  const shown = list.slice(0, limit);
+  if (!shown.length) { document.getElementById("rowsWrap").innerHTML = `<div class="empty">Ingen rekker</div>`; document.getElementById("more").innerHTML=""; return; }
+  let h = `<table class="rt"><tr><th></th>${M.map((_,k)=>`<th>${k+1}</th>`).join("")}<th>Rette</th><th>Maks</th></tr>`;
+  for (const s of shown) {
+    h += `<tr><td class="idx">#${s.r+1}</td>`;
+    for (let k = 0; k < 12; k++) {
+      const v = rows[s.r*12+k], rv = res[k];
+      const cls = rv === null ? "" : (rv === v ? "ok" : "bad");
+      h += `<td><span class="s ${cls}">${SIGNS[v]}</span></td>`;
+    }
+    h += `<td class="sc">${s.c}</td><td class="mx">${s.max}</td></tr>`;
+  }
+  document.getElementById("rowsWrap").innerHTML = h + "</table>";
+  const more = document.getElementById("more");
+  more.innerHTML = "";
+  if (list.length > limit) {
+    const b1 = document.createElement("button"); b1.textContent = `Vis 200 til (${shown.length} av ${list.length.toLocaleString("nb-NO")})`;
+    b1.onclick = () => { limit += 200; render(); };
+    const b2 = document.createElement("button"); b2.textContent = "Vis alle";
+    b2.onclick = () => { limit = Infinity; render(); };
+    more.append(b1, b2);
+  }
+}
+
+// ---------- Live ----------
+// Fungerer når siden serveres av tipping_live.py (som henter fra Norsk Tipping og eksponerer /api/live).
+const live = { available:false, on:false, timer:null, info:{}, last:null, msg:"" };
+const OUT = { HOME:0, DRAW:1, AWAY:2 };
+const FINAL_STATES = /FINISH|ENDED|FULL_TIME|AFTER|CLOSED|COMPLETE/i;
+
+function renderLiveBar() {
+  const el = document.getElementById("livebar");
+  if (!live.available) {
+    el.innerHTML = `<span class="dot"></span><span>Fikk ikke kontakt med Norsk Tipping. Sjekk nettforbindelsen og last siden på nytt.</span>`;
+    return;
+  }
+  const t = live.last ? live.last.toLocaleTimeString("nb-NO") : "–";
+  el.innerHTML = `<label><input type="checkbox" id="liveChk" ${live.on?"checked":""}> <span class="dot ${live.on?"on":""}"></span> Live</label>
+    <span>${live.on ? `Sist oppdatert ${t} · hvert minutt` : "Av"}${live.msg ? " · " + esc(live.msg) : ""}</span>`;
+  document.getElementById("liveChk").onchange = e => setLive(e.target.checked);
+}
+
+function setLive(on, msg = "") {
+  live.on = on; live.msg = msg;
+  clearInterval(live.timer);
+  if (on) { pollLive(); live.timer = setInterval(pollLive, 60000); }
+  else { M.forEach((_, k) => { document.getElementById("sc"+k).textContent = ""; }); live.info = {}; update(true); }
+  try { localStorage.setItem(STORE_KEY + "-live", on ? "1" : "0"); } catch(e) {}
+  renderLiveBar();
+}
+
+// Norsk Tippings API svarer med CORS «*», så siden kan hente direkte når den åpnes som fil
+// eller ligger på en vanlig webserver. Claude-sider blokkerer kall til andre domener;
+// da prøves api/live (tipping_live.py) som reserve.
+const NT_API = "https://api.norsk-tipping.no/PoolGamesSportInfo/v1/api/tipping/game/resulted-and-closest-before-date";
+function ntUrl() {
+  // Lås til denne kupongen: siste kupong med salgsstopp før midnatt kupongdagen
+  const m = /(\d{2})\.(\d{2})\.(\d{4})/.exec(DATA.kupong || "");
+  return m ? `${NT_API}?date=${m[3]}-${m[2]}-${m[1]}T22:59:00Z` : NT_API;
+}
+let source = null;
+async function fetchLive() {
+  const tries = source ? [source] : [ntUrl(), "api/live"];
+  let lastErr;
+  for (const u of tries) {
+    try {
+      const r = await fetch(u, { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if (!Array.isArray(j.matches)) throw new Error("uventet svar");
+      source = u; return j;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+async function pollLive() {
+  try {
+    const j = await fetchLive();
+    applyLive(j);
+    live.last = new Date(); live.msg = "";
+  } catch (e) {
+    live.msg = "Klarte ikke å hente (" + e.message + "), prøver igjen";
+  }
+  renderLiveBar();
+}
+
+function applyLive(j) {
+  const byNr = {};
+  (j.matches || []).forEach(m => { byNr[m.gameEngineSortingNumber] = m; });
+  const warn = [];
+  M.forEach((mm, k) => {
+    const m = byNr[k+1]; if (!m) return;
+    const h = m.teams?.home || {};
+    const names = [h.webName, h.retailerName, h.mobileName].filter(Boolean).map(x => x.trim().toLowerCase().slice(0,3));
+    if (names.length && !names.includes(mm.h.trim().toLowerCase().slice(0,3))) warn.push(k+1);
+    const cur = m.results?.final || m.results?.fullTime || m.results?.current;
+    const st = m.status || {};
+    const final = !!(cur && cur.gameEngineConfirmation) || FINAL_STATES.test(st.value || "");
+    const scEl = document.getElementById("sc"+k);
+    if (cur && cur.outcome in OUT) {
+      res[k] = OUT[cur.outcome];
+      live.info[k] = { final };
+      const sc = cur.score ? `${cur.score.home}–${cur.score.away}` : "";
+      const txt = st.description?.shortText || st.description?.mainText || "";
+      scEl.textContent = `${sc}${final ? " slutt" : txt ? " " + txt : ""} · `;
+      scEl.className = "score" + (final ? "" : " live");
+    } else {
+      res[k] = null; delete live.info[k];
+      const txt = st.description?.mainText;
+      scEl.textContent = txt && txt !== "Ikke startet" ? txt + " · " : "";
+      scEl.className = "score";
+    }
+  });
+  if (warn.length) live.msg = `NB: kamp ${warn.join(", ")} ser ikke ut til å stemme med kupongen i fila`;
+  update(true);
+}
+
+(async () => {
+  try { await fetchLive(); live.available = true; } catch (e) { live.available = false; }
+  let want = true;
+  try { want = localStorage.getItem(STORE_KEY + "-live") !== "0"; } catch(e) {}
+  if (live.available && want) setLive(true); else renderLiveBar();
+})();
+
+update(true);
+} // slutt start()
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+</script>
+</body>
+</html>

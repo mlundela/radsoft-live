@@ -1,0 +1,5 @@
+# Personlige rekker skal ikke på GitHub
+*.fak
+rekker_rette.html
+__pycache__/
+.DS_Store
