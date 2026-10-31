@@ -2,6 +2,7 @@
 <html lang="no">
 <head>
 <meta charset="utf-8">
+<meta name="radsoft-repo" content="mlundela/radsoft-live">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Radsoft live – rekker sortert etter antall rette</title>
 <style>
@@ -205,11 +206,19 @@ document.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
 // En fil du laster opp selv brukes til repoet får en ny .fak-fil (eller hvis den er nyere enn repoets).
 const stamp = name => { const m = /(\d{12})/.exec(name || ""); return m ? m[1] : ""; };
 
-async function repoFak() {
+function repoSlug() {
+  // Repoet står i <meta name="radsoft-repo">, så det virker også med eget domene (CNAME)
+  const meta = document.querySelector('meta[name="radsoft-repo"]');
+  if (meta && meta.content) return meta.content.trim();
   const host = location.hostname.match(/^([^.]+)\.github\.io$/);
   if (!host) return null;
-  const repo = location.pathname.split("/").filter(Boolean)[0] || `${host[1]}.github.io`;
-  const r = await fetch(`https://api.github.com/repos/${host[1]}/${repo}/contents/`);
+  return `${host[1]}/${location.pathname.split("/").filter(Boolean)[0] || host[1] + ".github.io"}`;
+}
+
+async function repoFak() {
+  const slug = repoSlug();
+  if (!slug || location.protocol === "file:") return null;
+  const r = await fetch(`https://api.github.com/repos/${slug}/contents/`);
   if (!r.ok) throw new Error("GitHub svarte " + r.status);
   const files = (await r.json()).filter(f => f.type === "file" && /\.fak$/i.test(f.name));
   if (!files.length) return null;
